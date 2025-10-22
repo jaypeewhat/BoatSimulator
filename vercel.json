@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/Simulator/route-simulator.html" }
+  ]
+}
