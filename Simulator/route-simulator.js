@@ -23,6 +23,9 @@ Boat Route Simulator
   const btnUndo = $("btnUndo");
   const btnEmergency = $("btnEmergency");
   const emergencyToggle = $("emergencyToggle");
+  const btnTogglePanel = $("btnTogglePanel");
+  const controlPanel = $("controlPanel");
+  const overlayEl = $("overlay");
 
   // --- Map setup ---
   const map = L.map("map").setView([14.5995, 120.9842], 12); // Manila default
@@ -281,5 +284,51 @@ Boat Route Simulator
       }
     }
   });
+
+  // --- Mobile panel toggle ---
+  function isMobile(){ return window.matchMedia('(max-width: 900px)').matches; }
+  function openPanel(){
+    if (!isMobile()) return;
+    controlPanel.classList.add('open');
+    controlPanel.setAttribute('aria-hidden', 'false');
+    if (overlayEl){ overlayEl.hidden = false; overlayEl.classList.add('show'); }
+    if (btnTogglePanel){ btnTogglePanel.setAttribute('aria-expanded', 'true'); }
+    // Wait for CSS transition, then fix Leaflet map sizing
+    setTimeout(() => { try { map.invalidateSize(); } catch(_){} }, 300);
+  }
+  function closePanel(){
+    if (!isMobile()) return;
+    controlPanel.classList.remove('open');
+    controlPanel.setAttribute('aria-hidden', 'true');
+    if (overlayEl){ overlayEl.classList.remove('show'); setTimeout(() => { overlayEl.hidden = true; }, 200); }
+    if (btnTogglePanel){ btnTogglePanel.setAttribute('aria-expanded', 'false'); }
+    setTimeout(() => { try { map.invalidateSize(); } catch(_){} }, 300);
+  }
+  if (btnTogglePanel){
+    btnTogglePanel.addEventListener('click', () => {
+      const open = controlPanel.classList.contains('open');
+      if (open) closePanel(); else openPanel();
+    });
+  }
+  if (overlayEl){ overlayEl.addEventListener('click', closePanel); }
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
+  // Handle responsive changes
+  const mq = window.matchMedia('(max-width: 900px)');
+  function handleMedia(){
+    if (mq.matches){ // mobile
+      controlPanel.classList.remove('open');
+      controlPanel.setAttribute('aria-hidden', 'true');
+      if (overlayEl){ overlayEl.classList.remove('show'); overlayEl.hidden = true; }
+      if (btnTogglePanel){ btnTogglePanel.setAttribute('aria-expanded', 'false'); }
+    } else { // desktop
+      controlPanel.classList.remove('open');
+      controlPanel.setAttribute('aria-hidden', 'false');
+      if (overlayEl){ overlayEl.classList.remove('show'); overlayEl.hidden = true; }
+      if (btnTogglePanel){ btnTogglePanel.setAttribute('aria-expanded', 'false'); }
+      try { map.invalidateSize(); } catch(_){}
+    }
+  }
+  mq.addEventListener ? mq.addEventListener('change', handleMedia) : mq.addListener(handleMedia);
+  handleMedia();
 
 })();
