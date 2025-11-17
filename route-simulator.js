@@ -78,6 +78,9 @@ Boat Route Simulator
     if (waypoints.length >= 2){
       routeLine = L.polyline(waypoints.map(w => [w.lat, w.lng]), { color: '#38bdf8' }).addTo(map);
       fitBoundsIfNeeded();
+    } else if (waypoints.length === 1){
+      // Single waypoint - just center the map
+      map.setView([waypoints[0].lat, waypoints[0].lng], 15);
     }
   }
 
@@ -99,8 +102,8 @@ Boat Route Simulator
   function log(t){ const at = new Date().toLocaleTimeString(); logEl.textContent += `\n[${at}] ${t}`; logEl.scrollTop = logEl.scrollHeight; }
 
   function startSimulation(){
-    if (waypoints.length < 2){
-      alert('Add at least two waypoints');
+    if (waypoints.length < 1){
+      alert('Add at least one waypoint');
       return;
     }
     if (simRunning){ return; }
@@ -118,8 +121,13 @@ Boat Route Simulator
     }
 
     const intervalMs = Math.max(1, Number(intervalSecEl.value)) * 1000;
-    setStatus(`Running @ ${speedKmhEl.value} km/h, every ${intervalSecEl.value}s`);
-    log('▶ simulation started');
+    if (waypoints.length === 1){
+      setStatus(`Stationary @ ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}, every ${intervalSecEl.value}s`);
+      log('▶ stationary boat started (1 waypoint)');
+    } else {
+      setStatus(`Running @ ${speedKmhEl.value} km/h, every ${intervalSecEl.value}s`);
+      log('▶ simulation started');
+    }
 
     // kick first tick immediately
     tickSimulation();
@@ -135,7 +143,18 @@ Boat Route Simulator
   }
 
   function tickSimulation(){
-    if (waypoints.length < 2){ stopSimulation(); return; }
+    if (waypoints.length < 1){ stopSimulation(); return; }
+
+    // If only 1 waypoint, stay stationary at that position
+    if (waypoints.length === 1){
+      const pos = waypoints[0];
+      if (boatMarker){ boatMarker.setLatLng([pos.lat, pos.lng]); }
+      lastPos = pos;
+      sendToFirebase(pos.lat, pos.lng)
+        .then(code => log(`PUT Firebase (${code}) lat=${pos.lat.toFixed(6)} lng=${pos.lng.toFixed(6)}`))
+        .catch(err => log(`ERR Firebase ${err}`));
+      return;
+    }
 
     const speedMs = Math.max(1, Number(speedKmhEl.value)) * (1000/3600); // m/s
     const dt = Math.max(1, Number(intervalSecEl.value)); // s
