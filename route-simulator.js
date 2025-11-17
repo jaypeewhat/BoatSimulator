@@ -23,6 +23,12 @@ Boat Route Simulator
   const btnUndo = $("btnUndo");
   const btnEmergency = $("btnEmergency");
   const emergencyToggle = $("emergencyToggle");
+  const standbyBoatIdEl = $("standbyBoatId");
+  const standbyLatEl = $("standbyLat");
+  const standbyLngEl = $("standbyLng");
+  const btnStandbyStart = $("btnStandbyStart");
+  const btnStandbyStop = $("btnStandbyStop");
+  const btnStandbySetPos = $("btnStandbySetPos");
 
   // --- Map setup ---
   const map = L.map("map").setView([14.5995, 120.9842], 12); // Manila default
@@ -35,6 +41,9 @@ Boat Route Simulator
   let routeLine = null;
   let boatMarker = null;
   let lastPos = null; // remember last simulated position
+  let standbyMarker = null;
+  let standbyTimer = null;
+  let standbyRunning = false;
 
   map.on('click', (e) => {
     addWaypoint(e.latlng.lat, e.latlng.lng);
@@ -254,6 +263,84 @@ Boat Route Simulator
     return { post: resPost.status, put: resPut.status };
   }
 
+  // --- Standby Boat ---
+  function startStandbyBoat(){
+    const lat = Number(standbyLatEl.value);
+    const lng = Number(standbyLngEl.value);
+    if (isNaN(lat) || isNaN(lng)){
+      alert('Enter valid lat/lng for standby boat');
+      return;
+    }
+    if (standbyRunning){ return; }
+
+    standbyRunning = true;
+    
+    // Place standby marker on map
+    if (!standbyMarker){
+      standbyMarker = L.circleMarker([lat, lng], { radius: 6, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }).addTo(map);
+    } else {
+      standbyMarker.setLatLng([lat, lng]);
+    }
+
+    const intervalMs = Math.max(1, Number(intervalSecEl.value)) * 1000;
+    log(`🟠 Standby boat started at ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+
+    // Send immediately then start interval
+    tickStandbyBoat();
+    standbyTimer = setInterval(tickStandbyBoat, intervalMs);
+  }
+
+  function stopStandbyBoat(){
+    if (!standbyRunning){ return; }
+    standbyRunning = false;
+    clearInterval(standbyTimer); standbyTimer = null;
+    log('🟠 Standby boat stopped');
+  }
+
+  function setStandbyPosition(){
+    if (waypoints.length > 0){
+      const wp = waypoints[0];
+      standbyLatEl.value = wp.lat.toFixed(6);
+      standbyLngEl.value = wp.lng.toFixed(6);
+      log(`🟠 Set standby position to first waypoint`);
+    } else {
+      alert('Add a waypoint first or enter coordinates manually');
+    }
+  }
+
+  async function tickStandbyBoat(){
+    const lat = Number(standbyLatEl.value);
+    const lng = Number(standbyLngEl.value);
+    const boatId = standbyBoatIdEl.value.trim() || 'STANDBY_001';
+
+    const base = dbUrlEl.value.replace(/\/$/, '');
+    const auth = authEl.value.trim();
+    let url = `${base}/boats/${encodeURIComponent(boatId)}.json`;
+    if (auth) url += `?auth=${encodeURIComponent(auth)}`;
+
+    const payload = {
+      boatId,
+      timestamp: { ".sv": "timestamp" },
+      status: 'GPS_FIX',
+      lat: Number(lat.toFixed(6)),
+      lng: Number(lng.toFixed(6)),
+      rssi: -70 + Math.round(Math.random()*10),
+      snr: Number((5 + Math.random()*5).toFixed(1)),
+      lastUpdate: { ".sv": "timestamp" }
+    };
+
+    try {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      log(`🟠 Standby PUT Firebase (${res.status}) lat=${lat.toFixed(6)} lng=${lng.toFixed(6)}`);
+    } catch (err) {
+      log(`ERR Standby ${err}`);
+    }
+  }
+
   // --- Buttons ---
   btnStart.addEventListener('click', startSimulation);
   btnStop.addEventListener('click', stopSimulation);
@@ -281,5 +368,8 @@ Boat Route Simulator
       }
     }
   });
+  btnStandbyStart.addEventListener('click', startStandbyBoat);
+  btnStandbyStop.addEventListener('click', stopStandbyBoat);
+  btnStandbySetPos.addEventListener('click', setStandbyPosition);
 
 })();

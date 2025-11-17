@@ -98,6 +98,28 @@
       </div>
 
       <div class="section">
+        <h2>Standby Boat</h2>
+        <label>Standby Boat ID</label>
+        <input id="standbyBoatId" type="text" value="STANDBY_001" />
+        <div class="row" style="margin-top:8px;">
+          <div>
+            <label>Latitude</label>
+            <input id="standbyLat" type="number" step="any" value="14.5995" />
+          </div>
+          <div>
+            <label>Longitude</label>
+            <input id="standbyLng" type="number" step="any" value="120.9842" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button id="btnStandbyStart" class="btn btn-primary">🟠 Start Standby</button>
+          <button id="btnStandbyStop" class="btn">⏸ Stop Standby</button>
+        </div>
+        <button id="btnStandbySetPos" class="btn" style="margin-top:8px; width:100%;">📍 Use First Waypoint</button>
+        <div class="hint">Stationary boat that sends live updates at the same interval.</div>
+      </div>
+
+      <div class="section">
         <h2>Status</h2>
         <div id="statusText" class="hint">Idle</div>
       </div>
