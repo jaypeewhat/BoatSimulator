@@ -49,6 +49,16 @@ Boat Route Simulator
     addWaypoint(e.latlng.lat, e.latlng.lng);
   });
 
+  map.on('contextmenu', (e) => {
+    // Right-click sets standby position
+    standbyLatEl.value = e.latlng.lat.toFixed(6);
+    standbyLngEl.value = e.latlng.lng.toFixed(6);
+    if (standbyMarker){
+      standbyMarker.setLatLng([e.latlng.lat, e.latlng.lng]);
+    }
+    log(`🟠 Standby position set to ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)} (right-click)`);
+  });
+
   function addWaypoint(lat, lng){
     const m = L.marker([lat,lng], { draggable: false }).addTo(map);
     waypoints.push({ lat, lng, marker: m });
@@ -115,7 +125,7 @@ Boat Route Simulator
     // Place boat marker at first point
     const a = waypoints[0];
     if (!boatMarker){
-      boatMarker = L.circleMarker([a.lat, a.lng], { radius: 6, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 1 }).addTo(map);
+      boatMarker = L.circleMarker([a.lat, a.lng], { radius: 7, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.9, weight: 2 }).addTo(map);
     } else {
       boatMarker.setLatLng([a.lat, a.lng]);
     }
@@ -138,7 +148,11 @@ Boat Route Simulator
     if (!simRunning){ return; }
     simRunning = false;
     clearInterval(simTimer); simTimer = null;
-    setStatus('Paused');
+    if (waypoints.length === 1){
+      setStatus('Stationary boat paused');
+    } else {
+      setStatus('Paused');
+    }
     log('⏸ simulation paused');
   }
 
@@ -296,13 +310,13 @@ Boat Route Simulator
     
     // Place standby marker on map
     if (!standbyMarker){
-      standbyMarker = L.circleMarker([lat, lng], { radius: 6, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 1 }).addTo(map);
+      standbyMarker = L.circleMarker([lat, lng], { radius: 7, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.8, weight: 2 }).addTo(map);
     } else {
       standbyMarker.setLatLng([lat, lng]);
     }
 
     const intervalMs = Math.max(1, Number(intervalSecEl.value)) * 1000;
-    log(`🟠 Standby boat started at ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    log(`🟠 Standby boat started at ${lat.toFixed(6)}, ${lng.toFixed(6)} (${intervalSecEl.value}s interval)`);
 
     // Send immediately then start interval
     tickStandbyBoat();
@@ -390,5 +404,19 @@ Boat Route Simulator
   btnStandbyStart.addEventListener('click', startStandbyBoat);
   btnStandbyStop.addEventListener('click', stopStandbyBoat);
   btnStandbySetPos.addEventListener('click', setStandbyPosition);
+
+  // Auto-restart with new interval when changed
+  intervalSecEl.addEventListener('change', () => {
+    if (simRunning){
+      const wasRunning = simRunning;
+      stopSimulation();
+      if (wasRunning) setTimeout(startSimulation, 100);
+    }
+    if (standbyRunning){
+      const wasStandbyRunning = standbyRunning;
+      stopStandbyBoat();
+      if (wasStandbyRunning) setTimeout(startStandbyBoat, 100);
+    }
+  });
 
 })();
